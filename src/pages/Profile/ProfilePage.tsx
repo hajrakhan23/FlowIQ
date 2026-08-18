@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useQueue } from '../../contexts/QueueContext';
+import { getSupabaseStatus } from '../../lib/supabase/client';
+import { DatabaseInspectorModal } from '../../components/database/DatabaseInspectorModal';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
@@ -16,6 +18,8 @@ import {
   Save,
   Sparkles,
   Leaf,
+  Database,
+  ExternalLink,
 } from 'lucide-react';
 
 export const ProfilePage: React.FC = () => {
@@ -27,6 +31,7 @@ export const ProfilePage: React.FC = () => {
   const [emailConfirmPref, setEmailConfirmPref] = useState(true);
   const [emailTurnPref, setEmailTurnPref] = useState(true);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [showDbModal, setShowDbModal] = useState(false);
 
   // User's token history
   const userTokens = tokens.filter((t) => t.patient_id === user?.id || t.patient_email === user?.email);
@@ -246,9 +251,46 @@ export const ProfilePage: React.FC = () => {
                 </div>
               )}
             </div>
+
+            {/* Supabase Connection Status Card */}
+            <div className="p-6 rounded-3xl bg-white border border-[#96D7C6]/60 shadow-lg space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <h3 className="text-base font-black text-[#1E3A3A] flex items-center gap-2">
+                  <Database className="w-4 h-4 text-[#5AA7A7]" />
+                  <span>Cloud Database</span>
+                </h3>
+                <span className="flex items-center gap-1 text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  Live Connected
+                </span>
+              </div>
+
+              <p className="text-xs text-[#5A7A7A]">
+                Connected to Supabase project <strong className="font-mono text-[#1E3A3A]">bwpkgcujoqtlcxcntzch</strong> (FlowIQ) with real-time queue broadcasting.
+              </p>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowDbModal(true)}
+                  className="w-full text-xs font-bold gap-1.5 cursor-pointer"
+                >
+                  <Database className="w-3.5 h-3.5 text-[#5AA7A7]" />
+                  <span>Inspect Database & Tables</span>
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Supabase Database & Table Inspector Modal */}
+      <DatabaseInspectorModal
+        isOpen={showDbModal}
+        onClose={() => setShowDbModal(false)}
+      />
     </div>
   );
 };

@@ -59,7 +59,7 @@ const QueueContext = createContext<QueueContextType | undefined>(undefined);
 // Local Storage Cache Keys
 const LS_DEPTS = 'flowiq_departments';
 const LS_COUNTERS = 'flowiq_counters';
-const LS_TOKENS = 'flowiq_tokens_v2';
+const LS_TOKENS = 'flowiq_tokens_v5';
 const LS_FEEDBACK = 'flowiq_feedback';
 const LS_ANALYTICS = 'flowiq_analytics';
 const LS_NOTIFICATIONS = 'flowiq_notifications';
@@ -97,7 +97,7 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       try {
         const parsed: Token[] = JSON.parse(saved);
         if (parsed.length > 0) {
-          return parsed.map((t) => {
+          const formatted: Token[] = parsed.map((t) => {
             const matchedCounter = INITIAL_COUNTERS.find((c) => c.id === t.counter_id || c.department_id === t.department_id);
             return {
               ...t,
@@ -106,6 +106,15 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               patient_name: t.patient_name ? t.patient_name.replace(/^(Dr\.|St\.)\s*/, '') : 'Arthur Pendelton',
             };
           });
+
+          // Ensure past demo tokens are also retained in token history
+          INITIAL_TOKENS.forEach((initTok) => {
+            if (initTok.status === 'served' && !formatted.some((ft) => ft.id === initTok.id)) {
+              formatted.push(initTok);
+            }
+          });
+
+          return formatted;
         }
       } catch (e) {
         return INITIAL_TOKENS;

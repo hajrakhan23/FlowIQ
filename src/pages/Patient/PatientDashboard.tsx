@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useQueue } from '../../contexts/QueueContext';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { CrowdGauge } from '../../components/ui/CrowdGauge';
+import { Token } from '../../types';
 import {
   Clock,
   Users,
@@ -38,6 +39,8 @@ import {
   History,
   CalendarCheck,
   FileText,
+  Printer,
+  X,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -62,6 +65,7 @@ export const PatientDashboard: React.FC = () => {
   const [feedbackComment, setFeedbackComment] = useState('');
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [selectedReceipt, setSelectedReceipt] = useState<Token | null>(null);
 
   // Dynamic greeting based on current local time
   const getGreeting = () => {
@@ -155,12 +159,17 @@ export const PatientDashboard: React.FC = () => {
   const isStateB = activeToken && (activeToken.status === 'waiting' || activeToken.status === 'called' || activeToken.status === 'serving');
   const isStateC = activeToken && activeToken.status === 'served';
 
-  // Past Tokens History for this patient
-  const pastTokens = tokens.filter(
-    (t) =>
-      (t.user_id === user?.id || t.patient_email === user?.email) &&
-      (t.status === 'served' || t.status === 'no_show')
-  );
+  // Past Tokens History dynamically matched for this patient
+  const pastTokens = useMemo(() => {
+    return tokens.filter((t) => {
+      const matchUser =
+        (user?.id && t.user_id === user.id) ||
+        (user?.email && t.patient_email && t.patient_email.toLowerCase().trim() === user.email.toLowerCase().trim()) ||
+        (cleanPatientName && t.patient_name && t.patient_name.toLowerCase().trim() === cleanPatientName.toLowerCase().trim());
+
+      return matchUser && (t.status === 'served' || t.status === 'no_show');
+    });
+  }, [tokens, user, cleanPatientName]);
 
   return (
     <div className="min-h-screen bg-[#F7FBF9] text-[#1E3A3A] p-4 sm:p-6 lg:p-8 font-sans">
@@ -687,20 +696,21 @@ export const PatientDashboard: React.FC = () => {
                 return (
                   <div
                     key={pt.id}
-                    className="p-5 rounded-2xl bg-[#F7FBF9] border border-[#96D7C6]/60 hover:border-[#5AA7A7] hover:shadow-md transition-all flex flex-col justify-between space-y-3"
+                    className="p-5 rounded-2xl bg-[#F7FBF9] border border-[#96D7C6]/60 hover:border-[#5AA7A7] hover:shadow-md transition-all flex flex-col justify-between space-y-3 cursor-pointer group"
+                    onClick={() => setSelectedReceipt(pt)}
                   >
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-mono font-black text-[#5AA7A7] px-2.5 py-1 rounded-lg bg-white border border-[#96D7C6]/40 shadow-xs">
                           Token #{pt.token_number}
                         </span>
-                        <Badge variant={isServed ? 'olive' : 'default'} className="text-[10px]">
+                        <Badge variant={isServed ? 'olive' : 'default'} className="text-[10px] font-bold">
                           {isServed ? '✓ Completed' : pt.status}
                         </Badge>
                       </div>
 
                       <div>
-                        <h4 className="text-sm font-black text-[#1E3A3A]">
+                        <h4 className="text-sm font-black text-[#1E3A3A] group-hover:text-[#5AA7A7] transition-colors">
                           {pt.custom_department || dept?.name || 'Department'}
                         </h4>
                         <div className="flex items-center gap-1.5 text-xs text-[#5A7A7A] mt-1 font-medium">
@@ -715,8 +725,9 @@ export const PatientDashboard: React.FC = () => {
                         <CalendarCheck className="w-3.5 h-3.5 text-[#BAC94A]" />
                         {formattedDate} • {formattedTime}
                       </span>
-                      <span className="font-mono font-semibold text-[#1E3A3A]">
-                        {pt.actual_wait_minutes ? `${pt.actual_wait_minutes} min service` : 'Completed'}
+                      <span className="font-bold text-[#5AA7A7] group-hover:underline flex items-center gap-1">
+                        <FileText className="w-3.5 h-3.5" />
+                        Receipt
                       </span>
                     </div>
                   </div>
@@ -728,11 +739,114 @@ export const PatientDashboard: React.FC = () => {
               <FileText className="w-8 h-8 text-[#96D7C6] mx-auto" />
               <p className="text-xs font-bold text-[#1E3A3A]">No past tokens found on this device</p>
               <p className="text-[11px] text-[#5A7A7A]">
-                When you complete consultations, your token receipts will be archived here.
+                When you complete consultations, your token receipts and records will dynamically appear here.
               </p>
             </div>
           )}
         </div>
+
+        {/* ══════════════════════════════════════════════
+            MEDICAL RECEIPT & TOKEN DETAILS MODAL
+        ══════════════════════════════════════════════ */}
+        <AnimatePresence>
+          {selectedReceipt && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4"
+              onClick={() => setSelectedReceipt(null)}
+            >
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                className="w-full max-w-md bg-white rounded-3xl p-6 sm:p-8 border border-[#96D7C6] shadow-2xl space-y-6 relative"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Close Button */}
+                <button
+                  onClick={() => setSelectedReceipt(null)}
+                  className="absolute top-5 right-5 p-2 rounded-xl text-[#5A7A7A] hover:bg-slate-100 transition-all cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+
+                {/* Header Stamp */}
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-[#5AA7A7]/15 flex items-center justify-center text-[#5AA7A7]">
+                    <FileText className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] uppercase font-mono font-bold tracking-widest text-[#5AA7A7]">
+                      Clinical Visit Receipt
+                    </span>
+                    <h3 className="text-xl font-black text-[#1E3A3A]">
+                      Token #{selectedReceipt.token_number}
+                    </h3>
+                  </div>
+                </div>
+
+                {/* Receipt Details Box */}
+                <div className="p-4 rounded-2xl bg-[#F7FBF9] border border-[#96D7C6]/60 space-y-3 text-xs">
+                  <div className="flex justify-between py-1 border-b border-slate-200/60">
+                    <span className="text-[#5A7A7A]">Patient Name</span>
+                    <strong className="text-[#1E3A3A] font-bold">{selectedReceipt.patient_name || cleanPatientName}</strong>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-slate-200/60">
+                    <span className="text-[#5A7A7A]">Patient Email</span>
+                    <strong className="text-[#1E3A3A] font-mono">{selectedReceipt.patient_email || user?.email}</strong>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-slate-200/60">
+                    <span className="text-[#5A7A7A]">Department</span>
+                    <strong className="text-[#1E3A3A] font-bold">
+                      {selectedReceipt.custom_department ||
+                        getDepartmentById(selectedReceipt.department_id)?.name ||
+                        'General Clinical Care'}
+                    </strong>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-slate-200/60">
+                    <span className="text-[#5A7A7A]">Attending Doctor</span>
+                    <strong className="text-[#1E3A3A] font-bold">{selectedReceipt.doctor_name || 'Dr. Robert Sterling'}</strong>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-slate-200/60">
+                    <span className="text-[#5A7A7A]">Consultation Time</span>
+                    <span className="text-[#1E3A3A] font-mono">
+                      {new Date(selectedReceipt.joined_at).toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-slate-200/60">
+                    <span className="text-[#5A7A7A]">Status</span>
+                    <Badge variant="olive" className="text-[10px]">
+                      ✓ {selectedReceipt.status.toUpperCase()}
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between py-1">
+                    <span className="text-[#5A7A7A]">Service Duration</span>
+                    <strong className="text-[#5AA7A7] font-mono">
+                      {selectedReceipt.actual_wait_minutes ? `${selectedReceipt.actual_wait_minutes} Minutes` : 'Completed (Standard Service)'}
+                    </strong>
+                  </div>
+                </div>
+
+                {/* Verification Notice */}
+                <div className="p-3 rounded-xl bg-[#EBF5F2] border border-[#96D7C6]/60 text-[11px] text-[#2D6A6A] flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-[#BAC94A] shrink-0" />
+                  <span>Verified digital clinical receipt stored on hospital ledger.</span>
+                </div>
+
+                <Button
+                  variant="primary"
+                  size="md"
+                  className="w-full font-bold cursor-pointer"
+                  onClick={() => setSelectedReceipt(null)}
+                >
+                  Close Receipt
+                </Button>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

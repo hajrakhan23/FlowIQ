@@ -1,7 +1,11 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+// User Configured Supabase Credentials
+const SUPABASE_PROJECT_URL = 'https://bwpkgcujoqtlcxcntzch.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ3cGtnY3Vqb3F0bGN4Y250emNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcwNDgzMjcsImV4cCI6MjEwMjYyNDMyN30.d1fVO5V9PK_fjoVwbNe3Y2gjvJs1OPrENh5UIm3WuPM';
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || SUPABASE_PROJECT_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || SUPABASE_ANON_KEY;
 
 export const isSupabaseConfigured = Boolean(
   supabaseUrl && 
@@ -10,29 +14,24 @@ export const isSupabaseConfigured = Boolean(
   !supabaseAnonKey.includes('your_supabase_anon_key')
 );
 
-// Real or dummy client to prevent instantiation crashes if keys are empty
-export const supabase: SupabaseClient = isSupabaseConfigured
-  ? createClient(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-      },
-    })
-  : createClient('https://placeholder-flowiq.supabase.co', 'placeholder-anon-key-flowiq', {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-      },
-    });
+// Real client with full session and auth capabilities
+export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+  },
+});
 
 export interface SupabaseConfigStatus {
   isConfigured: boolean;
   url: string;
+  projectId: string;
 }
 
 export function getSupabaseStatus(): SupabaseConfigStatus {
   return {
     isConfigured: isSupabaseConfigured,
-    url: isSupabaseConfigured ? supabaseUrl : 'Local Demo Mode (Full Real-Time Simulation)',
+    url: supabaseUrl,
+    projectId: 'bwpkgcujoqtlcxcntzch',
   };
 }

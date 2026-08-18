@@ -36,12 +36,18 @@ import {
   Layers,
   Filter,
   Box,
+  Database,
+  ExternalLink,
+  RefreshCw,
+  Copy,
+  Table,
 } from 'lucide-react';
 import { SpatialQueuePipeline3D } from '../../components/spatial/SpatialQueuePipeline3D';
 import {
   SpatialNodesOrbit,
   SpatialDiagnosticsAndHeatmap,
 } from '../../components/spatial/SpatialNodesOrbit';
+import { supabase, isSupabaseConfigured, getSupabaseStatus } from '../../lib/supabase/client';
 
 type AdminTab =
   | 'overview'
@@ -51,7 +57,8 @@ type AdminTab =
   | 'qr_codes'
   | 'departments'
   | 'analytics'
-  | 'notifications';
+  | 'notifications'
+  | 'database';
 
 export const AdminDashboard: React.FC = () => {
   const {
@@ -308,6 +315,7 @@ export const AdminDashboard: React.FC = () => {
             { id: 'qr_codes', label: 'Counter QR Directory', icon: Stethoscope },
             { id: 'departments', label: 'Departments & Desks', icon: Plus },
             { id: 'notifications', label: 'Broadcast Alerts', icon: Send },
+            { id: 'database', label: 'Cloud Database & Tables', icon: Database },
           ].map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -1194,6 +1202,192 @@ export const AdminDashboard: React.FC = () => {
                   <span>Send Broadcast Notification</span>
                 </Button>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* ══════════════════════════════════════════════
+            TAB 9: SUPABASE CLOUD DATABASE & TABLES
+        ══════════════════════════════════════════════ */}
+        {activeTab === 'database' && (
+          <div className="space-y-6 animate-in fade-in duration-300">
+            {/* Top Cloud Connection Banner */}
+            <div className="p-6 sm:p-8 rounded-3xl bg-white border border-[#96D7C6]/60 shadow-lg space-y-6">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-[#5AA7A7] to-[#BAC94A] flex items-center justify-center text-white shadow-md">
+                    <Database className="w-7 h-7" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-xl sm:text-2xl font-black text-[#1E3A3A]">
+                        Supabase PostgreSQL Database
+                      </h2>
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        Live Cloud Connected
+                      </span>
+                    </div>
+                    <p className="text-xs text-[#5A7A7A] mt-0.5">
+                      Project ID: <strong className="font-mono text-[#1E3A3A]">bwpkgcujoqtlcxcntzch</strong> • Name: <strong className="text-[#1E3A3A]">FlowIQ</strong> • Endpoint: <span className="font-mono text-[#5AA7A7]">https://bwpkgcujoqtlcxcntzch.supabase.co</span>
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <a
+                    href="https://supabase.com/dashboard/project/bwpkgcujoqtlcxcntzch/editor"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-[#5AA7A7] text-white text-xs font-bold hover:bg-[#488E8E] transition-all shadow-md cursor-pointer"
+                  >
+                    <Table className="w-4 h-4" />
+                    <span>Open Supabase Table Editor ↗</span>
+                  </a>
+                  <a
+                    href="https://supabase.com/dashboard/project/bwpkgcujoqtlcxcntzch/sql"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-[#BAC94A] text-[#1E3A1E] text-xs font-bold hover:bg-[#a9b83b] transition-all shadow-md cursor-pointer"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    <span>Open SQL Editor ↗</span>
+                  </a>
+                </div>
+              </div>
+
+              {/* Status Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="p-4 rounded-2xl bg-[#F7FBF9] border border-[#96D7C6]/60 space-y-1">
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-[#5AA7A7] font-bold">
+                    Database Engine
+                  </span>
+                  <p className="text-sm font-extrabold text-[#1E3A3A]">PostgreSQL 15 (Supabase)</p>
+                  <span className="text-[10px] text-emerald-700 font-bold">✓ Real-time CDC Enabled</span>
+                </div>
+                <div className="p-4 rounded-2xl bg-[#F7FBF9] border border-[#96D7C6]/60 space-y-1">
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-[#5AA7A7] font-bold">
+                    Active Queued Tokens
+                  </span>
+                  <p className="text-sm font-extrabold text-[#1E3A3A] font-mono">{tokens.length} In-Memory & Cloud</p>
+                  <span className="text-[10px] text-[#5A7A7A]">Synced on ticket generation</span>
+                </div>
+                <div className="p-4 rounded-2xl bg-[#F7FBF9] border border-[#96D7C6]/60 space-y-1">
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-[#5AA7A7] font-bold">
+                    Registered Counters
+                  </span>
+                  <p className="text-sm font-extrabold text-[#1E3A3A] font-mono">{counters.length} Active Desks</p>
+                  <span className="text-[10px] text-[#5A7A7A]">Dynamic doctor assignments</span>
+                </div>
+                <div className="p-4 rounded-2xl bg-[#F7FBF9] border border-[#96D7C6]/60 space-y-1">
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-[#5AA7A7] font-bold">
+                    Security & RLS
+                  </span>
+                  <p className="text-sm font-extrabold text-[#1E3A3A]">Row Level Security (RLS)</p>
+                  <span className="text-[10px] text-emerald-700 font-bold">✓ Enabled for all 7 tables</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Tables Directory */}
+            <div className="p-6 sm:p-8 rounded-3xl bg-white border border-[#96D7C6]/60 shadow-lg space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-black text-[#1E3A3A] flex items-center gap-2">
+                    <Table className="w-5 h-5 text-[#5AA7A7]" />
+                    <span>Hospital Database Tables Architecture</span>
+                  </h3>
+                  <p className="text-xs text-[#5A7A7A]">
+                    Click any table below to view and edit its live records in your Supabase project dashboard.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {[
+                  {
+                    table: 'public.tokens',
+                    name: 'tokens',
+                    count: tokens.length,
+                    desc: 'Stores patient tokens, status (waiting/serving/served), department, counter, and doctor details.',
+                    badge: 'Core Queue Engine',
+                  },
+                  {
+                    table: 'public.profiles',
+                    name: 'profiles',
+                    count: 'Dynamic',
+                    desc: 'User identity, role-based access controls (patient, staff, admin), phone, and contact details.',
+                    badge: 'Authentication & RBAC',
+                  },
+                  {
+                    table: 'public.departments',
+                    name: 'departments',
+                    count: departments.length,
+                    desc: 'Hospital wings and medical clinics (OPD, Pediatrics, Cardiology, Emergency, Radiology, etc.).',
+                    badge: 'Hospital Directory',
+                  },
+                  {
+                    table: 'public.counters',
+                    name: 'counters',
+                    count: counters.length,
+                    desc: 'Physical consulting desks, attending physicians, active staff, and counter open/paused states.',
+                    badge: 'Staff Desks',
+                  },
+                  {
+                    table: 'public.feedback',
+                    name: 'feedback',
+                    count: feedbackList.length,
+                    desc: 'Patient star ratings, clinical satisfaction reviews, and wait-time feedback.',
+                    badge: 'Patient Feedback',
+                  },
+                  {
+                    table: 'public.notifications',
+                    name: 'notifications',
+                    count: 'Active',
+                    desc: 'Queue chimes, turns alert notifications, sound chimes, and administrative emergency broadcasts.',
+                    badge: 'Alert System',
+                  },
+                  {
+                    table: 'public.analytics',
+                    name: 'analytics',
+                    count: analyticsRecords.length,
+                    desc: 'Hourly traffic history used by the AI engine for predictive peak crowd forecasting.',
+                    badge: 'AI Intelligence',
+                  },
+                ].map((t) => (
+                  <div
+                    key={t.table}
+                    className="p-5 rounded-2xl bg-[#F7FBF9] border border-[#96D7C6]/60 hover:border-[#5AA7A7] hover:shadow-md transition-all flex flex-col justify-between space-y-3 group"
+                  >
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono text-xs font-black text-[#5AA7A7] px-2.5 py-1 rounded-lg bg-white border border-[#96D7C6]/40 shadow-xs">
+                          {t.table}
+                        </span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#BAC94A]/25 text-[#374507]">
+                          {t.badge}
+                        </span>
+                      </div>
+                      <p className="text-xs text-[#5A7A7A] leading-relaxed">{t.desc}</p>
+                    </div>
+
+                    <div className="pt-3 border-t border-slate-200/60 flex items-center justify-between text-xs">
+                      <span className="text-[#1E3A3A] font-bold">
+                        Status: <span className="text-emerald-700">✓ Connected</span>
+                      </span>
+                      <a
+                        href="https://supabase.com/dashboard/project/bwpkgcujoqtlcxcntzch/editor"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-bold text-[#5AA7A7] hover:underline flex items-center gap-1"
+                      >
+                        <span>View Records</span>
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         )}

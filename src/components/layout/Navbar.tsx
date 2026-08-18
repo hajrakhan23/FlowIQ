@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useQueue } from '../../contexts/QueueContext';
+import { getSupabaseStatus } from '../../lib/supabase/client';
+import { DatabaseInspectorModal } from '../database/DatabaseInspectorModal';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import {
@@ -20,6 +22,7 @@ import {
   Trash2,
   Leaf,
   Sparkles,
+  Database,
 } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
@@ -31,6 +34,7 @@ export const Navbar: React.FC = () => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [showDbModal, setShowDbModal] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
 
   const isCurrent = (path: string) => location.pathname === path;
@@ -235,6 +239,17 @@ export const Navbar: React.FC = () => {
             )}
           </div>
 
+          {/* Database Inspector Quick Toggle */}
+          <button
+            onClick={() => setShowDbModal(true)}
+            title="Inspect Supabase Cloud Database & Tables"
+            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 border border-white/30 text-white text-xs font-bold transition-all cursor-pointer"
+          >
+            <Database className="w-3.5 h-3.5 text-[#FFF5C0]" />
+            <span className="text-[11px] font-mono">DB</span>
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          </button>
+
           {/* Sound Notification Toggle */}
           <button
             onClick={toggleSound}
@@ -317,6 +332,30 @@ export const Navbar: React.FC = () => {
                         Admin AI Intelligence
                       </Link>
                     )}
+                  </div>
+
+                  {/* Supabase Status Indicator (Clickable to inspect) */}
+                  <div
+                    onClick={() => {
+                      setShowUserMenu(false);
+                      setShowDbModal(true);
+                    }}
+                    className="p-2.5 rounded-2xl bg-[#EBF5F2] hover:bg-[#d8ece7] border border-[#96D7C6]/60 text-[11px] space-y-1 cursor-pointer transition-colors group"
+                    title="Click to inspect all Supabase tables & connections"
+                  >
+                    <div className="flex items-center justify-between text-[#1E3A3A] font-bold">
+                      <span className="flex items-center gap-1.5 text-[#2D6A6A] group-hover:text-[#1E3A3A]">
+                        <Database className="w-3.5 h-3.5 text-[#5AA7A7]" />
+                        Supabase Cloud DB
+                      </span>
+                      <span className="flex items-center gap-1 text-[10px] text-emerald-700 font-black">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        Inspect ↗
+                      </span>
+                    </div>
+                    <p className="text-[10px] font-mono text-[#5A7A7A] truncate">
+                      {getSupabaseStatus().url.replace('https://', '')}
+                    </p>
                   </div>
 
                   <div className="pt-2 border-t border-slate-100">
@@ -427,6 +466,12 @@ export const Navbar: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Supabase Database & Table Inspector Modal */}
+      <DatabaseInspectorModal
+        isOpen={showDbModal}
+        onClose={() => setShowDbModal(false)}
+      />
     </header>
   );
 };

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth, COM_EMAIL_REGEX } from '../../contexts/AuthContext';
 import { Button } from '../../components/ui/Button';
 import { UserRole } from '../../types';
 import {
@@ -18,6 +18,8 @@ import {
   X,
   Sparkles,
   Leaf,
+  KeyRound,
+  Info,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -37,9 +39,14 @@ export const AuthPage: React.FC = () => {
   const [googleName, setGoogleName] = useState('Paras Masurkar');
   const [googleEmail, setGoogleEmail] = useState('parasmasurkar10@gmail.com');
   const [googleRole, setGoogleRole] = useState<UserRole>('patient');
+  const [googleError, setGoogleError] = useState('');
 
   const { signInWithEmail, signUpWithEmail, signInWithGoogle, resetPassword } = useAuth();
   const navigate = useNavigate();
+
+  const isEmailComValid = (em: string) => {
+    return COM_EMAIL_REGEX.test(em.trim());
+  };
 
   const handleRedirect = (role?: string) => {
     const returnUrl = localStorage.getItem('flowiq_return_url');
@@ -62,8 +69,15 @@ export const AuthPage: React.FC = () => {
     e.preventDefault();
     setErrorMsg('');
     setSuccessMsg('');
-    if (!email || !password) {
+
+    if (!email.trim() || !password) {
       setErrorMsg('Please enter both email and password.');
+      return;
+    }
+
+    // Constraint: Email must match .com regex pattern
+    if (!isEmailComValid(email)) {
+      setErrorMsg('Invalid email format. Email must end with ".com" (e.g. name@domain.com).');
       return;
     }
 
@@ -82,16 +96,26 @@ export const AuthPage: React.FC = () => {
     e.preventDefault();
     setErrorMsg('');
     setSuccessMsg('');
-    if (!email || !password || !fullName) {
+
+    if (!email.trim() || !password || !fullName.trim()) {
       setErrorMsg('Please complete all registration fields.');
       return;
     }
-    if (password !== confirmPassword) {
-      setErrorMsg('Passwords do not match.');
+
+    // Constraint: Email must match .com regex pattern
+    if (!isEmailComValid(email)) {
+      setErrorMsg('Invalid email address. Registration requires a valid email ending with ".com" (e.g. paras@gmail.com).');
       return;
     }
+
+    // Constraint: Password must match confirmation password
+    if (password !== confirmPassword) {
+      setErrorMsg('Passwords do not match. Please re-enter your password accurately.');
+      return;
+    }
+
     if (password.length < 6) {
-      setErrorMsg('Password must be at least 6 characters long.');
+      setErrorMsg('Password must be at least 6 characters in length.');
       return;
     }
 
@@ -107,7 +131,14 @@ export const AuthPage: React.FC = () => {
   };
 
   const handleGoogleSubmit = async () => {
+    setGoogleError('');
     setErrorMsg('');
+
+    if (!isEmailComValid(googleEmail)) {
+      setGoogleError('Google Email must be a valid address ending with ".com" (e.g. parasmasurkar10@gmail.com).');
+      return;
+    }
+
     setLoading(true);
     const res = await signInWithGoogle({
       name: googleName.trim() || 'Paras Masurkar',
@@ -115,18 +146,22 @@ export const AuthPage: React.FC = () => {
       role: googleRole,
     });
     setLoading(false);
-    setShowGoogleModal(false);
 
     if (res.error) {
-      setErrorMsg(res.error);
+      setGoogleError(res.error);
     } else {
+      setShowGoogleModal(false);
       handleRedirect(googleRole);
     }
   };
 
   const handleForgotPassword = async () => {
-    if (!email) {
+    if (!email.trim()) {
       setErrorMsg('Please enter your email above to receive password reset instructions.');
+      return;
+    }
+    if (!isEmailComValid(email)) {
+      setErrorMsg('Please enter a valid email ending in ".com".');
       return;
     }
     const res = await resetPassword(email);
@@ -135,6 +170,15 @@ export const AuthPage: React.FC = () => {
     } else {
       setErrorMsg(res.message);
     }
+  };
+
+  const setQuickFill = (demoEmail: string, demoRole: UserRole, demoName: string, demoPass: string) => {
+    setEmail(demoEmail);
+    setPassword(demoPass);
+    setConfirmPassword(demoPass);
+    setSelectedRole(demoRole);
+    setFullName(demoName);
+    setErrorMsg('');
   };
 
   return (
@@ -175,6 +219,13 @@ export const AuthPage: React.FC = () => {
               </div>
             </div>
 
+            {googleError && (
+              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                <span>{googleError}</span>
+              </div>
+            )}
+
             <div className="space-y-4">
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-700">Account Name</label>
@@ -188,7 +239,10 @@ export const AuthPage: React.FC = () => {
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700">Google Email</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-700">Google Email</label>
+                  <span className="text-[10px] text-[#5AA7A7] font-semibold">Must end in .com</span>
+                </div>
                 <input
                   type="email"
                   value={googleEmail}
@@ -294,10 +348,10 @@ export const AuthPage: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-3 p-3 rounded-2xl bg-white/20 border border-white/30 backdrop-blur-md text-[#FFFDF2]">
-              <Zap className="w-5 h-5 text-[#BAC94A] shrink-0" />
+              <KeyRound className="w-5 h-5 text-[#BAC94A] shrink-0" />
               <div>
-                <h5 className="text-xs font-bold text-[#FFFDF2]">Instant Google Login</h5>
-                <p className="text-[11px] text-[#0F3944] font-medium">One-click secure identity verification</p>
+                <h5 className="text-xs font-bold text-[#FFFDF2]">Strict Credential Verification</h5>
+                <p className="text-[11px] text-[#0F3944] font-medium">Email .com validation & exact password matching</p>
               </div>
             </div>
 
@@ -342,7 +396,7 @@ export const AuthPage: React.FC = () => {
                     setErrorMsg('');
                     setSuccessMsg('');
                   }}
-                  className={`py-2 text-xs font-bold rounded-lg transition-all ${
+                  className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                     tab === 'signin'
                       ? 'bg-[#5AA7A7] text-white shadow-sm'
                       : 'text-[#4E6B6B] hover:text-[#1E3A3A]'
@@ -357,7 +411,7 @@ export const AuthPage: React.FC = () => {
                     setErrorMsg('');
                     setSuccessMsg('');
                   }}
-                  className={`py-2 text-xs font-bold rounded-lg transition-all ${
+                  className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                     tab === 'signup'
                       ? 'bg-[#5AA7A7] text-white shadow-sm'
                       : 'text-[#4E6B6B] hover:text-[#1E3A3A]'
@@ -374,7 +428,7 @@ export const AuthPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setSelectedRole('patient')}
-                    className={`py-2 px-2.5 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 ${
+                    className={`py-2 px-2.5 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                       selectedRole === 'patient'
                         ? 'bg-[#BAC94A] text-[#1E3A1E] border-[#BAC94A]/80 shadow-sm'
                         : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300'
@@ -386,7 +440,7 @@ export const AuthPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setSelectedRole('staff')}
-                    className={`py-2 px-2.5 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 ${
+                    className={`py-2 px-2.5 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                       selectedRole === 'staff'
                         ? 'bg-[#6C8CBF] text-white border-[#6C8CBF] shadow-sm'
                         : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300'
@@ -398,7 +452,7 @@ export const AuthPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setSelectedRole('admin')}
-                    className={`py-2 px-2.5 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 ${
+                    className={`py-2 px-2.5 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                       selectedRole === 'admin'
                         ? 'bg-[#5AA7A7] text-white border-[#5AA7A7] shadow-sm'
                         : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300'
@@ -411,17 +465,63 @@ export const AuthPage: React.FC = () => {
               </div>
             </div>
 
+            {/* Quick-Fill Presets for Demo / Testing */}
+            <div className="p-3 rounded-2xl bg-[#EBF5F2] border border-[#96D7C6]/60 text-xs space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-[#1E3A3A] flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-[#BAC94A]" />
+                  Quick Fill Portal Credentials
+                </span>
+                <span className="text-[10px] text-[#5AA7A7] font-bold">Default Portal Passwords</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setQuickFill('parasmasurkar10@gmail.com', 'patient', 'Paras Masurkar', 'Paras@123')}
+                  className="p-2 rounded-xl bg-white border border-[#96D7C6]/60 text-left hover:bg-[#BAC94A]/20 transition-all cursor-pointer space-y-0.5"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-black text-[#1E3A3A]">Patient</span>
+                    <span className="text-[9px] font-mono font-bold text-[#445508] bg-[#BAC94A]/30 px-1 rounded">Paras@123</span>
+                  </div>
+                  <p className="text-[9px] text-[#5A7A7A] truncate">parasmasurkar10@gmail.com</p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQuickFill('staff@flowiq-hospital.com', 'staff', 'St. Shifa Khan', 'Shifa@123')}
+                  className="p-2 rounded-xl bg-white border border-[#96D7C6]/60 text-left hover:bg-[#6C8CBF]/20 transition-all cursor-pointer space-y-0.5"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-black text-[#1E3A3A]">Staff</span>
+                    <span className="text-[9px] font-mono font-bold text-[#1E3A3A] bg-[#6C8CBF]/30 px-1 rounded">Shifa@123</span>
+                  </div>
+                  <p className="text-[9px] text-[#5A7A7A] truncate">staff@flowiq-hospital.com</p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQuickFill('admin@flowiq-hospital.com', 'admin', 'Dr. Insha Malik', 'Insha@123')}
+                  className="p-2 rounded-xl bg-white border border-[#96D7C6]/60 text-left hover:bg-[#5AA7A7]/20 transition-all cursor-pointer space-y-0.5"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-black text-[#1E3A3A]">Admin</span>
+                    <span className="text-[9px] font-mono font-bold text-[#1E3A3A] bg-[#5AA7A7]/30 px-1 rounded">Insha@123</span>
+                  </div>
+                  <p className="text-[9px] text-[#5A7A7A] truncate">admin@flowiq-hospital.com</p>
+                </button>
+              </div>
+            </div>
+
             {/* Error / Success Banners */}
             {errorMsg && (
-              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
+              <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2 shadow-xs">
                 <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-                <span>{errorMsg}</span>
+                <span className="font-medium">{errorMsg}</span>
               </div>
             )}
             {successMsg && (
-              <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2">
+              <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2 shadow-xs">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>{successMsg}</span>
+                <span className="font-medium">{successMsg}</span>
               </div>
             )}
 
@@ -450,14 +550,14 @@ export const AuthPage: React.FC = () => {
                   d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.35 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
                 />
               </svg>
-              <span>Continue with Google</span>
+              <span>Continue with Google (Instant Auth)</span>
             </button>
 
             {/* OR Divider */}
             <div className="relative flex items-center justify-center">
               <div className="border-t border-[#96D7C6]/60 w-full" />
               <span className="bg-[#F7FBF9] px-3 text-[11px] uppercase tracking-wider text-[#4E6B6B] font-semibold">
-                Or with Email
+                Or with Email & Password
               </span>
               <div className="border-t border-[#96D7C6]/60 w-full" />
             </div>
@@ -474,18 +574,39 @@ export const AuthPage: React.FC = () => {
                   className="space-y-4"
                 >
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-[#1E3A3A] flex items-center gap-1.5">
-                      <Mail className="w-3.5 h-3.5 text-[#5AA7A7]" />
-                      Email Address
-                    </label>
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-[#1E3A3A] flex items-center gap-1.5">
+                        <Mail className="w-3.5 h-3.5 text-[#5AA7A7]" />
+                        Email Address
+                      </label>
+                      <span className="text-[10px] text-[#5AA7A7] font-semibold">Validation: regex .com</span>
+                    </div>
                     <input
                       type="email"
                       required
                       placeholder="name@example.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#96D7C6]/60 bg-white text-xs text-[#1E3A3A] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#5AA7A7]"
+                      className={`w-full px-3.5 py-2.5 rounded-xl border bg-white text-xs text-[#1E3A3A] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#5AA7A7] ${
+                        email.length > 3 && !isEmailComValid(email)
+                          ? 'border-amber-400'
+                          : email.length > 3 && isEmailComValid(email)
+                          ? 'border-emerald-400'
+                          : 'border-[#96D7C6]/60'
+                      }`}
                     />
+                    {email.length > 3 && !isEmailComValid(email) && (
+                      <p className="text-[10px] text-amber-600 font-semibold flex items-center gap-1 mt-1">
+                        <AlertCircle className="w-3 h-3 text-amber-600 shrink-0" />
+                        Email must end with &quot;.com&quot; (e.g. {email.includes('@') ? `${email.split('@')[0]}@hospital.com` : 'user@domain.com'})
+                      </p>
+                    )}
+                    {email.length > 3 && isEmailComValid(email) && (
+                      <p className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1 mt-1">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                        Valid .com email format verified
+                      </p>
+                    )}
                   </div>
 
                   <div className="space-y-1">
@@ -517,7 +638,7 @@ export const AuthPage: React.FC = () => {
                     variant="primary"
                     size="md"
                     loading={loading}
-                    className="w-full mt-2 font-bold py-2.5"
+                    className="w-full mt-2 font-bold py-2.5 cursor-pointer"
                   >
                     Sign In as {selectedRole.toUpperCase()}
                   </Button>
@@ -534,12 +655,12 @@ export const AuthPage: React.FC = () => {
                   <div className="space-y-1">
                     <label className="text-xs font-bold text-[#1E3A3A] flex items-center gap-1.5">
                       <User className="w-3.5 h-3.5 text-[#5AA7A7]" />
-                      Full Name
+                      Full Legal Name
                     </label>
                     <input
                       type="text"
                       required
-                      placeholder="Alex Rivera"
+                      placeholder="Paras Masurkar"
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
                       className="w-full px-3.5 py-2.5 rounded-xl border border-[#96D7C6]/60 bg-white text-xs text-[#1E3A3A] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#5AA7A7]"
@@ -547,25 +668,46 @@ export const AuthPage: React.FC = () => {
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-[#1E3A3A] flex items-center gap-1.5">
-                      <Mail className="w-3.5 h-3.5 text-[#5AA7A7]" />
-                      Email Address
-                    </label>
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-[#1E3A3A] flex items-center gap-1.5">
+                        <Mail className="w-3.5 h-3.5 text-[#5AA7A7]" />
+                        Email Address (.com constraint)
+                      </label>
+                      <span className="text-[10px] text-[#5AA7A7] font-semibold">Ends in .com</span>
+                    </div>
                     <input
                       type="email"
                       required
-                      placeholder="alex@example.com"
+                      placeholder="paras@example.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#96D7C6]/60 bg-white text-xs text-[#1E3A3A] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#5AA7A7]"
+                      className={`w-full px-3.5 py-2.5 rounded-xl border bg-white text-xs text-[#1E3A3A] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#5AA7A7] ${
+                        email.length > 3 && !isEmailComValid(email)
+                          ? 'border-amber-400'
+                          : email.length > 3 && isEmailComValid(email)
+                          ? 'border-emerald-400'
+                          : 'border-[#96D7C6]/60'
+                      }`}
                     />
+                    {email.length > 3 && !isEmailComValid(email) && (
+                      <p className="text-[10px] text-amber-600 font-semibold flex items-center gap-1 mt-1">
+                        <AlertCircle className="w-3 h-3 text-amber-600 shrink-0" />
+                        Email must end with &quot;.com&quot; (e.g. user@hospital.com)
+                      </p>
+                    )}
+                    {email.length > 3 && isEmailComValid(email) && (
+                      <p className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1 mt-1">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                        Valid .com email format verified
+                      </p>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <label className="text-xs font-bold text-[#1E3A3A] flex items-center gap-1.5">
                         <Lock className="w-3.5 h-3.5 text-[#5AA7A7]" />
-                        Password
+                        Password (min 6)
                       </label>
                       <input
                         type="password"
@@ -579,7 +721,7 @@ export const AuthPage: React.FC = () => {
                     <div className="space-y-1">
                       <label className="text-xs font-bold text-[#1E3A3A] flex items-center gap-1.5">
                         <Lock className="w-3.5 h-3.5 text-[#5AA7A7]" />
-                        Confirm
+                        Confirm Password
                       </label>
                       <input
                         type="password"
@@ -592,12 +734,26 @@ export const AuthPage: React.FC = () => {
                     </div>
                   </div>
 
+                  {confirmPassword.length > 0 && (
+                    <div className="text-[11px] font-semibold mt-1">
+                      {password === confirmPassword ? (
+                        <p className="text-emerald-600 flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Passwords match perfectly
+                        </p>
+                      ) : (
+                        <p className="text-rose-500 flex items-center gap-1">
+                          <AlertCircle className="w-3.5 h-3.5 text-rose-500" /> Passwords do not match
+                        </p>
+                      )}
+                    </div>
+                  )}
+
                   <Button
                     type="submit"
                     variant="primary"
                     size="md"
                     loading={loading}
-                    className="w-full mt-2 font-bold py-2.5"
+                    className="w-full mt-2 font-bold py-2.5 cursor-pointer"
                   >
                     Register as {selectedRole.toUpperCase()}
                   </Button>
@@ -610,3 +766,4 @@ export const AuthPage: React.FC = () => {
     </div>
   );
 };
+
