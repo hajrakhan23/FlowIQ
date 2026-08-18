@@ -1,0 +1,6 @@
+{
+  "name": "FlowIQ",
+  "description": "AI-Powered Queue & Crowd Management web application for hospitals.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
